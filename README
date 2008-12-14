@@ -1,0 +1,8 @@
+HTTP Proxy
+
+Web: http://code.google.com/p/g-http-proxy/
+Source: http://github.com/neotyk/http-proxy/tree/master
+
+Simple HTTP Proxy using Grizzly[1]
+
+[1] https://grizzly.dev.java.net/
