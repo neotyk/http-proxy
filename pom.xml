@@ -70,6 +70,8 @@
                 <groupId>org.ops4j</groupId>
                 <artifactId>maven-pax-plugin</artifactId>
                 <version>1.4</version>
+              <executions>
+<!--
                 <executions>
                     <execution>
                         <goals>
@@ -83,7 +85,8 @@
                             <version>1.9.0.2</version>
                         </configuration>
                     </execution>
-                </executions>
+-->
+              </executions>
             </plugin>
         </plugins>
     </build>
