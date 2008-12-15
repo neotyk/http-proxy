@@ -7,5 +7,6 @@ package net.kungfoo.grizzly.proxy;
  */
 public enum HttpHeader {
     Max_Forwards,
-    Expect
+    Expect,
+    Via
 }

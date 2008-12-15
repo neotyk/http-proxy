@@ -1,5 +1,9 @@
 package net.kungfoo.grizzly.proxy;
 
+import static net.kungfoo.grizzly.proxy.HttpMethodName.*;
+import static net.kungfoo.grizzly.proxy.HttpHeader.Expect;
+import static net.kungfoo.grizzly.proxy.HttpHeader.Max_Forwards;
+import static net.kungfoo.grizzly.proxy.HttpHeader.Via;
 import com.sun.grizzly.tcp.Adapter;
 import com.sun.grizzly.tcp.OutputBuffer;
 import com.sun.grizzly.tcp.Request;
@@ -7,7 +11,10 @@ import com.sun.grizzly.tcp.Response;
 import com.sun.grizzly.util.buf.ByteChunk;
 import com.sun.grizzly.util.buf.MessageBytes;
 import com.sun.grizzly.util.http.Parameters;
+import com.sun.grizzly.util.http.MimeHeaders;
 import org.apache.commons.httpclient.*;
+import org.apache.commons.httpclient.params.HttpMethodParams;
+import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
 import org.apache.commons.httpclient.methods.*;
 
 import java.io.IOException;
@@ -27,15 +34,19 @@ import java.util.logging.Logger;
  * @author Hubert Iwaniuk
  */
 public class SimpleHttpProxy implements Adapter {
-  private static HttpClient httpClient = new HttpClient(
-      new MultiThreadedHttpConnectionManager());
-  private static final String TRACE = "TRACE";
-  private static final String GET = "GET";
-  private static final String DELETE = "DELETE";
-  private static final String HEAD = "HEAD";
-  private static final String OPTIONS = "OPTIONS";
-  private static final String POST = "POST";
-  private static final String PUT = "PUT";
+  private static HttpClient httpClient;
+
+  static {
+    MultiThreadedHttpConnectionManager httpConnectionManager = new MultiThreadedHttpConnectionManager();
+    HttpConnectionManagerParams params = new HttpConnectionManagerParams();
+    params.setDefaultMaxConnectionsPerHost(20);
+    params.setMaxTotalConnections(1000);
+    httpConnectionManager.setParams(params);
+    httpClient = new HttpClient(httpConnectionManager);
+    httpClient.getParams().setParameter(
+            HttpMethodParams.RETRY_HANDLER,
+            new DefaultHttpMethodRetryHandler(0, false));
+  }
 
   public void service(Request request, Response response) throws Exception {
     String uri = request.requestURI().toString();
@@ -51,7 +62,7 @@ public class SimpleHttpProxy implements Adapter {
 
     // handle "Via"
     response.setHeader(
-        "Via",
+        Via.name(),
         request.protocol() + " antares");// TODO hostname, and Via from response
 
     String targetHost = request.serverName().toString();
@@ -62,12 +73,16 @@ public class SimpleHttpProxy implements Adapter {
 
     HttpMethod httpMethod = createMethod(request);
     httpMethod.setFollowRedirects(false);
-    int responseCode = httpClient.executeMethod(httpMethod);
-    response.setStatus(responseCode);
-    populateHeaders(httpMethod.getResponseHeaders(), response);
-    transfer(
+    try {
+      int responseCode = httpClient.executeMethod(httpMethod);
+      response.setStatus(responseCode);
+      populateHeaders(httpMethod.getResponseHeaders(), response);
+      transfer(
         httpMethod.getResponseBodyAsStream(), response.getOutputBuffer(),
         response);
+    } finally {
+      httpMethod.releaseConnection();
+    }
   }
 
   public void afterService(Request req, Response res) throws Exception {
@@ -78,22 +93,26 @@ public class SimpleHttpProxy implements Adapter {
   private static void transfer(
       InputStream responseBodyAsStream, OutputBuffer outputBuffer,
       Response response) throws IOException {
-    byte[] buf = new byte[8192];
-    int read;
-    do {
-      ByteChunk bc = new ByteChunk();
-      read = responseBodyAsStream.read(buf);
-      if (read != -1) {
-        bc.append(buf, 0, read);
-        outputBuffer.doWrite(bc, response);
-        if (logger.isLoggable(Level.FINEST)) {
-          logger.log(
-              Level.FINEST, MessageFormat
-              .format(
-              "Received Start\n{0}Received End", new String(bc.getBuffer())));
+    if (responseBodyAsStream != null) {
+      byte[] buf = new byte[8192];
+      int read;
+      do {
+        ByteChunk bc = new ByteChunk();
+        read = responseBodyAsStream.read(buf);
+        if (read != -1) {
+          bc.append(buf, 0, read);
+          outputBuffer.doWrite(bc, response);
+          if (logger.isLoggable(Level.FINEST)) {
+            logger.log(
+                Level.FINEST,
+                MessageFormat.format(
+                        "Received Start\n{0}\nReceived End",
+                        new String(bc.getBuffer())));
+          }
         }
-      }
-    } while (read != -1);
+      } while (read != -1);
+      responseBodyAsStream.close();
+    }
     response.finish();
   }
 
@@ -151,11 +170,25 @@ public class SimpleHttpProxy implements Adapter {
       method = postMethod;
     } else if (PUT.equalsIgnoreCase(methodName)) {
       method = new PutMethod(uri);
-    } else if (ConnectMethod.NAME.equalsIgnoreCase(methodName)) {
+    } else if (CONNECT.equalsIgnoreCase(methodName)) {
       method = new ConnectMethod();
       method.setURI(new URI(uri, true));
     }
-    //request.
+    if (method != null) {
+      MimeHeaders mimeHeaders = request.getMimeHeaders();
+      int count = mimeHeaders.size();
+      for (int i = 0; i < count; i++) {
+        String name = mimeHeaders.getName(i).toString();
+        String value = mimeHeaders.getValue(i).toString();
+        method.addRequestHeader(name, value);
+        if (logger.isLoggable(Level.FINEST)) {
+          logger.log(Level.FINEST,
+                  MessageFormat.format(
+                          "Adding header [name: {0}, value: {1}].",
+                          name, value));
+        }
+      }
+    }
     return method;
   }
 
@@ -175,9 +208,9 @@ public class SimpleHttpProxy implements Adapter {
       Request request, Response response, MessageBytes method)
       throws IOException {
     // Max-Forwards (14.32)
-    if (OPTIONS.equalsIgnoreCase(method.toString()) || TRACE
-        .equalsIgnoreCase(method.toString())) {
-      String maxFrwds = request.getHeader(HttpHeader.Max_Forwards.toString());
+    if (OPTIONS.equalsIgnoreCase(method.toString())
+            || TRACE.equalsIgnoreCase(method.toString())) {
+      String maxFrwds = request.getHeader(Max_Forwards.toString());
       if (maxFrwds != null && !maxFrwds.trim().isEmpty()) {
         int forwards = Integer.parseInt(maxFrwds);
         if (forwards == 0) {
@@ -185,14 +218,14 @@ public class SimpleHttpProxy implements Adapter {
           // Exectation failed
           response.setStatus(417);
           response.setHeader(
-              HttpHeader.Expect.toString(), "Expected to have " + HttpHeader
-              .Max_Forwards + " > 0. Can't forward.");
+              Expect.toString(), "Expected to have " +
+                  Max_Forwards + " > 0. Can't forward.");
           response.sendHeaders();
           return true;
         } else {
           // update Max-Forwards
           response.setHeader(
-              HttpHeader.Max_Forwards.toString(), String.valueOf(forwards - 1));
+              Max_Forwards.toString(), String.valueOf(forwards - 1));
         }
       }
     }
