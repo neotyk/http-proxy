@@ -1,4 +1,4 @@
-package net.kungfoo.grizzly.proxy;
+package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.http.SelectorThread;
 import com.sun.grizzly.tcp.Adapter;
@@ -8,6 +8,8 @@ import org.osgi.framework.BundleContext;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.ConsoleHandler;
+
+import net.kungfoo.grizzly.proxy.SimpleHttpProxy;
 
 public class Activator implements BundleActivator {
     /**
@@ -56,7 +58,6 @@ public class Activator implements BundleActivator {
         selectorThread.setAdapter(httpProxy);
         SimpleHttpProxy.logger.setLevel(Level.FINEST);
         ConsoleHandler consoleHandler = new ConsoleHandler();
-        consoleHandler.setLevel(Level.FINEST);
         SimpleHttpProxy.logger.addHandler(consoleHandler);
         SimpleHttpProxy.logger.log(Level.FINE, "Setup done.");
         return httpProxy;

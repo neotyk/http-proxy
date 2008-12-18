@@ -1,4 +1,4 @@
-package net.kungfoo.grizzly.proxy;
+package net.kungfoo.grizzly.proxy.impl;
 
 /**
  * HTTP headers.
