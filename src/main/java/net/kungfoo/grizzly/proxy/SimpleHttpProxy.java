@@ -12,10 +12,11 @@ import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.OPTIONS;
 import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
 import net.kungfoo.grizzly.proxy.impl.MyNHttpRequestExecutionHandler;
 import net.kungfoo.grizzly.proxy.impl.MySessionRequestCallback;
+import net.kungfoo.grizzly.proxy.impl.ReqRespHolder;
 import org.apache.http.Header;
-import org.apache.http.HttpHost;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.nio.DefaultClientIOEventDispatch;
+import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
 import org.apache.http.nio.protocol.AsyncNHttpClientHandler;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.SessionRequest;
@@ -46,7 +47,6 @@ import java.util.logging.Logger;
 public class SimpleHttpProxy implements Adapter {
 
   private HttpParams params;
-  private ConnectingIOReactor ioReactor;
 
   public SimpleHttpProxy() {
     params = new BasicHttpParams();
@@ -87,7 +87,7 @@ public class SimpleHttpProxy implements Adapter {
 
     // We are going to use this object to synchronize between the
     // I/O event and main threads
-    CountDownLatch requestCount = new CountDownLatch(3);
+    CountDownLatch requestCount = new CountDownLatch(1);
 
     final AsyncNHttpClientHandler clientHandler = new AsyncNHttpClientHandler(
         httpproc,
@@ -102,6 +102,7 @@ public class SimpleHttpProxy implements Adapter {
         new DefaultConnectionReuseStrategy(),
         params);
     handler.setEventListener(new EventLogger());*/
+    final ConnectingIOReactor ioReactor = new DefaultConnectingIOReactor(2, params);
 
     Thread t = new Thread(new Runnable() {
 
@@ -123,8 +124,14 @@ public class SimpleHttpProxy implements Adapter {
     SessionRequest req = ioReactor.connect(
         new InetSocketAddress(targetHost, targetPort),
         null,
-        new HttpHost(targetHost),
+        new ReqRespHolder(request, response),
         new MySessionRequestCallback(requestCount));
+
+    requestCount.await();
+
+    System.out.println("Shutting down I/O reactor");
+    ioReactor.shutdown();
+    System.out.println("Done");
 
     // TODO: work with response, suspend reqquest
     // Block until all connections signal
@@ -227,8 +234,4 @@ public class SimpleHttpProxy implements Adapter {
 
   /** logger */
   public static Logger logger = Logger.getLogger("httpproxy");
-
-  public void setConnectingIOReactor(ConnectingIOReactor connectingIOReactor) {
-    this.ioReactor = connectingIOReactor;
-  }
 }

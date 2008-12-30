@@ -8,14 +8,20 @@ import org.apache.http.nio.ContentDecoder;
 import org.apache.http.nio.IOControl;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.ExecutionContext;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpEntity;
+import org.apache.http.*;
 import org.apache.http.util.EntityUtils;
 import org.apache.http.message.BasicHttpRequest;
+import org.apache.http.message.BasicHeader;
 
 import java.io.IOException;
+import java.util.Enumeration;
+import java.util.ArrayList;
+import java.util.List;
+
+import com.sun.grizzly.tcp.Request;
+import com.sun.grizzly.util.http.MimeHeaders;
+import com.sun.grizzly.util.http.Cookies;
+import com.sun.grizzly.util.http.ServerCookie;
 
 /**
  * NIO Http Request Execution Handler.
@@ -26,11 +32,14 @@ public class MyNHttpRequestExecutionHandler implements NHttpRequestExecutionHand
 
   private final static String REQUEST_SENT = "request-sent";
   private final static String RESPONSE_RECEIVED = "response-received";
+  private final static String REQUEST_RESPONSE_HOLDER = "request-response-holder";
 
   @Override
   public void initalizeContext(HttpContext context, Object attachment) {
-    HttpHost targetHost = (HttpHost) attachment;
+    final ReqRespHolder holder = (ReqRespHolder) attachment;
+    HttpHost targetHost = new HttpHost(holder.getRequest().serverName().toString());
     context.setAttribute(ExecutionContext.HTTP_TARGET_HOST, targetHost);
+    context.setAttribute(REQUEST_RESPONSE_HOLDER, holder);
   }
 
   @Override
@@ -46,6 +55,7 @@ public class MyNHttpRequestExecutionHandler implements NHttpRequestExecutionHand
   public HttpRequest submitRequest(HttpContext context) {
     HttpHost targetHost = (HttpHost) context.getAttribute(
         ExecutionContext.HTTP_TARGET_HOST);
+    ReqRespHolder holder = (ReqRespHolder) context.getAttribute(REQUEST_RESPONSE_HOLDER);
     Object flag = context.getAttribute(REQUEST_SENT);
     if (flag == null) {
       // Stick some object into the context
@@ -55,11 +65,39 @@ public class MyNHttpRequestExecutionHandler implements NHttpRequestExecutionHand
       System.out.println("Sending request to " + targetHost);
       System.out.println("--------------");
 
-      return new BasicHttpRequest("GET", "/");
+      final Request request = holder.getRequest();
+      final BasicHttpRequest httpRequest = new BasicHttpRequest(request.method().toString(), request.unparsedURI().toString());
+      httpRequest.setHeaders(convertHeaders(request.getMimeHeaders(), request.getCookies()));
+      return httpRequest;
     } else {
       // No new request to submit
       return null;
     }
+  }
+
+  private static Header[] convertHeaders(MimeHeaders mimeHeaders, Cookies cookies) {
+    final Enumeration enumeration = mimeHeaders.names();
+    List<Header> list = new ArrayList<Header>(12);
+    while (enumeration.hasMoreElements()) {
+      String name = (String) enumeration.nextElement();
+      //noinspection ObjectAllocationInLoop
+      list.add(new BasicHeader(name, mimeHeaders.getValue(name).toString()));
+    }
+    if (cookies != null) {
+      StringBuilder builder = new StringBuilder(128);
+      final int count = cookies.getCookieCount();
+      if (count > 0) {
+      for (int i=0; i < count; i++) {
+        final ServerCookie cookie = cookies.getCookie(i);
+        builder.append(cookie.getName().toString()).append('=').append(cookie.getValue().toString());
+        if (i < count -1){
+          builder.append("; ");
+        }
+      }
+      list.add(new BasicHeader("cookie", builder.toString()));
+      }
+    }
+    return list.toArray(new Header[list.size()]);
   }
 
   @Override

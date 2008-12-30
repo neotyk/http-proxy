@@ -22,6 +22,7 @@ public class MySessionRequestCallback implements SessionRequestCallback {
   }
 
   public void completed(final SessionRequest request) {
+    this.requestCount.countDown();
   }
 
   public void failed(final SessionRequest request) {
