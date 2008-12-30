@@ -9,9 +9,9 @@
   <artifactId>http-proxy</artifactId>
 
   <packaging>bundle</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>0.1.1-SNAPSHOT</version>
 
-  <name>http-proxy</name>
+  <name>KungFoo Base HTTP Proxy</name>
 
   <build>
     <defaultGoal>install</defaultGoal>
@@ -57,22 +57,10 @@
         <artifactId>maven-bundle-plugin</artifactId>
         <version>1.4.3</version>
         <extensions>true</extensions>
-        <!--
-                        <executions>
-                            <execution>
-                                <phase>package</phase>
-                                <goals>
-                                    <goal>wrap</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-        -->
         <configuration>
           <instructions>
             <Main-Class>net.kungfoo.grizzly.proxy.impl.Activator</Main-Class>
-            <Import-Package>
-              *
-            </Import-Package>
+            <Import-Package>*</Import-Package>
             <Export-Package>net.kungfoo.grizzly.proxy.*</Export-Package>
             <!--<Embed-Dependency>*;scope=compile|runtime</Embed-Dependency>-->
             <!--<Embed-Transitive>true</Embed-Transitive>-->
@@ -86,23 +74,6 @@
         <groupId>org.ops4j</groupId>
         <artifactId>maven-pax-plugin</artifactId>
         <version>1.4</version>
-        <executions>
-          <!--
-                          <executions>
-                              <execution>
-                                  <goals>
-                                      <goal>embed-jar</goal>
-                                  </goals>
-                                  <phase>package</phase>
-                                  <configuration>
-                                      <overwrite>true</overwrite>
-                                      <groupId>com.sun.grizzly</groupId>
-                                      <artifactId>grizzly-portunif</artifactId>
-                                      <version>1.9.0.2</version>
-                                  </configuration>
-                              </execution>
-          -->
-        </executions>
       </plugin>
     </plugins>
   </build>
@@ -141,11 +112,13 @@
       <artifactId>org.osgi.core</artifactId>
       <version>1.2.0</version>
     </dependency>
+<!--
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.main</artifactId>
       <version>1.4.0</version>
     </dependency>
+-->
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpcore-osgi</artifactId>
