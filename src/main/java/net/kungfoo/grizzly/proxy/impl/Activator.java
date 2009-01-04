@@ -1,5 +1,7 @@
 package net.kungfoo.grizzly.proxy.impl;
 
+import com.sun.grizzly.arp.*;
+import com.sun.grizzly.http.DefaultProcessorTask;
 import com.sun.grizzly.http.SelectorThread;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.nio.DefaultClientIOEventDispatch;
@@ -55,7 +57,27 @@ public class Activator implements BundleActivator {
     selectorThread = new SelectorThread();
     selectorThread.setPort(8282);
     ProxyAdapter httpProxy = new ProxyAdapter(connectingIOReactor);
+    DefaultAsyncHandler handler = new DefaultAsyncHandler();
+    handler.addAsyncFilter(new AsyncFilter() {
+      @Override public boolean doFilter(AsyncExecutor asyncExecutor) {
+        final AsyncTask asyncTask = asyncExecutor.getAsyncTask();
+        final AsyncHandler asyncHandler = asyncExecutor.getAsyncHandler();
+        DefaultProcessorTask task = (DefaultProcessorTask) asyncExecutor.getProcessorTask();
+        task.getRequest().setAttribute(ProxyAdapter.CALLBACK_KEY,
+            new Runnable() {
+              @Override public void run() {
+                asyncHandler.handle(asyncTask);
+              }
+            });
+        task.invokeAdapter();
+        return false;
+      }
+    });
+    selectorThread.setAsyncHandler(handler);
     selectorThread.setAdapter(httpProxy);
+    selectorThread.setEnableAsyncExecution(true);
+    selectorThread.setDisplayConfiguration(true);
+
     ProxyAdapter.logger.setLevel(Level.FINEST);
     ConsoleHandler consoleHandler = new ConsoleHandler();
     ProxyAdapter.logger.addHandler(consoleHandler);

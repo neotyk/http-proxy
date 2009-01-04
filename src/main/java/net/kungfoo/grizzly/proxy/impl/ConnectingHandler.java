@@ -76,17 +76,7 @@ public class ConnectingHandler implements NHttpClientHandler {
     ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) context.getAttribute(ProxyProcessingInfo.ATTRIB);
 
     synchronized (proxyTask) {
-      ConnState connState = proxyTask.getOriginState();
-      if (connState == ConnState.REQUEST_SENT
-        || connState == ConnState.REQUEST_BODY_DONE) {
-        // Request sent but no response available yet
-        return;
-      }
-
-      if (connState != ConnState.IDLE
-        && connState != ConnState.CONNECTED) {
-        throw new IllegalStateException("Illegal target connection state: " + connState);
-      }
+      if (reqReadyValidateConnectionState(proxyTask)) return;
 
       HttpRequest request = proxyTask.getRequest();
       if (request == null) {
@@ -134,6 +124,21 @@ public class ConnectingHandler implements NHttpClientHandler {
     }
   }
 
+  private boolean reqReadyValidateConnectionState(ProxyProcessingInfo proxyTask) {
+    ConnState connState = proxyTask.getOriginState();
+    if (connState == ConnState.REQUEST_SENT
+      || connState == ConnState.REQUEST_BODY_DONE) {
+      // Request sent but no response available yet
+      return true;
+    }
+
+    if (connState != ConnState.IDLE
+      && connState != ConnState.CONNECTED) {
+      throw new IllegalStateException("Illegal target connection state: " + connState);
+    }
+    return false;
+  }
+
   public void outputReady(final NHttpClientConnection conn, final ContentEncoder encoder) {
     System.out.println(conn + " [proxy->origin] output ready");
 
@@ -149,6 +154,7 @@ public class ConnectingHandler implements NHttpClientHandler {
 
       try {
 
+        // TODO: propper handling of POST
         ByteBuffer src = proxyTask.getInBuffer();
         src.flip();
         int bytesWritten = encoder.write(src);
@@ -204,15 +210,14 @@ public class ConnectingHandler implements NHttpClientHandler {
 
       int statusCode = line.getStatusCode();
       if (statusCode < HttpStatus.SC_OK) {
-        // Ignore 1xx response
+        // Ignore 1xx response, TODO: are you sure?
         return;
       }
       try {
 
         // Update connection state
         final Response clientResponse = proxyTask.getResponse();
-        
-//        proxyTask.setResponse(response);
+
         proxyTask.setOriginState(ConnState.RESPONSE_RECEIVED);
 
         clientResponse.setStatus(statusCode);
@@ -220,7 +225,6 @@ public class ConnectingHandler implements NHttpClientHandler {
         for (Header header : response.getAllHeaders()) {
           clientResponse.setHeader(header.getName(), header.getValue());
         }
-        clientResponse.flush();
 
         if (!canResponseHaveBody(request, response)) {
           conn.resetInput();
@@ -229,6 +233,7 @@ public class ConnectingHandler implements NHttpClientHandler {
             proxyTask.setOriginState(ConnState.CLOSING);
             conn.close();
           }
+          proxyTask.getCompletion().run();
         } else {
           final HttpEntity httpEntity = response.getEntity();
           if (httpEntity.isStreaming()) {
@@ -236,7 +241,6 @@ public class ConnectingHandler implements NHttpClientHandler {
             ByteChunk bc = new ByteChunk(1024);
             while (is.read(bc.getBytes()) != -1) {
               clientResponse.doWrite(bc);
-              clientResponse.flush();
             }
           }
         }
@@ -315,13 +319,12 @@ public class ConnectingHandler implements NHttpClientHandler {
         if (decoder.isCompleted()) {
           System.out.println(conn + " [proxy<-origin] response body received");
           proxyTask.setOriginState(ConnState.RESPONSE_BODY_DONE);
-          response.setCommitted(true);
-          response.finish();
           if (!this.connStrategy.keepAlive(conn.getHttpResponse(), context)) {
             System.out.println(conn + " [proxy<-origin] close connection");
             proxyTask.setOriginState(ConnState.CLOSING);
             conn.close();
           }
+          proxyTask.getCompletion().run();
         } else {
           proxyTask.setOriginState(ConnState.RESPONSE_BODY_STREAM);
         }

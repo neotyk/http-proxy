@@ -3,6 +3,7 @@ package net.kungfoo.grizzly.proxy.impl;
 import com.sun.grizzly.tcp.Adapter;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
+import com.sun.grizzly.tcp.ActionCode;
 import com.sun.grizzly.util.buf.MessageBytes;
 import com.sun.grizzly.util.http.MimeHeaders;
 import static net.kungfoo.grizzly.proxy.impl.HttpHeader.*;
@@ -20,6 +21,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import static java.text.MessageFormat.format;
 import java.util.Enumeration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,6 +37,7 @@ import java.util.logging.Logger;
 public class ProxyAdapter implements Adapter {
 
   private final ConnectingIOReactor connectingIOReactor;
+  static final String CALLBACK_KEY = "proxy.callback";
 
   public ProxyAdapter(ConnectingIOReactor connectingIOReactor) {
     this.connectingIOReactor = connectingIOReactor;
@@ -63,6 +68,8 @@ public class ProxyAdapter implements Adapter {
       // Initialize connection state
       proxyTask.setTarget(new HttpHost(targetHost, targetPort));
       proxyTask.setRequest(convert(method.getString(), uri, request));
+      Runnable completion = (Runnable) request.getAttribute(CALLBACK_KEY);
+      proxyTask.setCompletion(completion);
       proxyTask.setResponse(response);
 
       InetSocketAddress address = new InetSocketAddress(targetHost, targetPort);
@@ -71,7 +78,14 @@ public class ProxyAdapter implements Adapter {
         System.err.println("Connecting reactor not running.");
         response.setStatus(500);
         response.setMessage("Internal Booo");
-        response.finish();
+        // complete request.
+        ExecutorService executorService = Executors.newFixedThreadPool(1, new ThreadFactory() {
+          @Override
+          public Thread newThread(Runnable r) {
+            return new Thread(r, "EmergencyService");  //To change body of implemented methods use File | Settings | File Templates.
+          }
+        });
+        executorService.submit(completion);
         return;
       } else {
         connectingIOReactor.connect(address, null, proxyTask, null);
@@ -127,8 +141,7 @@ public class ProxyAdapter implements Adapter {
   }
 
   public void afterService(Request req, Response res) throws Exception {
-    req.recycle();
-    res.recycle();
+    req.action(ActionCode.ACTION_POST_REQUEST, null);
   }
 
   /**

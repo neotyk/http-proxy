@@ -31,6 +31,7 @@ public class ProxyProcessingInfo {
 
   private HttpRequest request;
   private Response response;
+  private Runnable completion;
 
   public ProxyProcessingInfo() {
     super();
@@ -114,4 +115,11 @@ public class ProxyProcessingInfo {
     }
   }
 
+  public void setCompletion(Runnable completion) {
+    this.completion = completion;
+  }
+
+  public Runnable getCompletion() {
+    return completion;
+  }
 }
