@@ -33,9 +33,9 @@ public class ConnectingHandler implements NHttpClientHandler {
   private final HttpParams params;
 
   public ConnectingHandler(
-    final HttpProcessor httpProcessor,
-    final ConnectionReuseStrategy connStrategy,
-    final HttpParams params) {
+      final HttpProcessor httpProcessor,
+      final ConnectionReuseStrategy connStrategy,
+      final HttpParams params) {
     super();
     this.httpProcessor = httpProcessor;
     this.connStrategy = connStrategy;
@@ -101,7 +101,7 @@ public class ConnectingHandler implements NHttpClientHandler {
       try {
 
         request.setParams(
-          new DefaultedHttpParams(request.getParams(), this.params));
+            new DefaultedHttpParams(request.getParams(), this.params));
 
         // Pre-process HTTP request
         context.setAttribute(ExecutionContext.HTTP_CONNECTION, conn);
@@ -127,13 +127,13 @@ public class ConnectingHandler implements NHttpClientHandler {
   private boolean reqReadyValidateConnectionState(ProxyProcessingInfo proxyTask) {
     ConnState connState = proxyTask.getOriginState();
     if (connState == ConnState.REQUEST_SENT
-      || connState == ConnState.REQUEST_BODY_DONE) {
+        || connState == ConnState.REQUEST_BODY_DONE) {
       // Request sent but no response available yet
       return true;
     }
 
     if (connState != ConnState.IDLE
-      && connState != ConnState.CONNECTED) {
+        && connState != ConnState.CONNECTED) {
       throw new IllegalStateException("Illegal target connection state: " + connState);
     }
     return false;
@@ -148,7 +148,7 @@ public class ConnectingHandler implements NHttpClientHandler {
     synchronized (proxyTask) {
       ConnState connState = proxyTask.getOriginState();
       if (connState != ConnState.REQUEST_SENT
-        && connState != ConnState.REQUEST_BODY_STREAM) {
+          && connState != ConnState.REQUEST_BODY_STREAM) {
         throw new IllegalStateException("Illegal target connection state: " + connState);
       }
 
@@ -198,7 +198,7 @@ public class ConnectingHandler implements NHttpClientHandler {
     synchronized (proxyTask) {
       ConnState connState = proxyTask.getOriginState();
       if (connState != ConnState.REQUEST_SENT
-        && connState != ConnState.REQUEST_BODY_DONE) {
+          && connState != ConnState.REQUEST_BODY_DONE) {
         throw new IllegalStateException("Illegal target connection state: " + connState);
       }
 
@@ -257,7 +257,7 @@ public class ConnectingHandler implements NHttpClientHandler {
   }
 
   private boolean canResponseHaveBody(
-    final HttpRequest request, final HttpResponse response) {
+      final HttpRequest request, final HttpResponse response) {
 
     if (request != null && "HEAD".equalsIgnoreCase(request.getRequestLine().getMethod())) {
       return false;
@@ -265,9 +265,9 @@ public class ConnectingHandler implements NHttpClientHandler {
 
     int status = response.getStatusLine().getStatusCode();
     return status >= HttpStatus.SC_OK
-      && status != HttpStatus.SC_NO_CONTENT
-      && status != HttpStatus.SC_NOT_MODIFIED
-      && status != HttpStatus.SC_RESET_CONTENT;
+        && status != HttpStatus.SC_NO_CONTENT
+        && status != HttpStatus.SC_NOT_MODIFIED
+        && status != HttpStatus.SC_RESET_CONTENT;
   }
 
   public void inputReady(final NHttpClientConnection conn, final ContentDecoder decoder) {
@@ -279,7 +279,7 @@ public class ConnectingHandler implements NHttpClientHandler {
     synchronized (proxyTask) {
       ConnState connState = proxyTask.getOriginState();
       if (connState != ConnState.RESPONSE_RECEIVED
-        && connState != ConnState.RESPONSE_BODY_STREAM) {
+          && connState != ConnState.RESPONSE_BODY_STREAM) {
         throw new IllegalStateException("Illegal target connection state: " + connState);
       }
 
@@ -288,21 +288,23 @@ public class ConnectingHandler implements NHttpClientHandler {
 
         ByteBuffer dst = proxyTask.getOutBuffer();
         int bytesRead = decoder.read(dst);
-        dst.flip();
-        final ByteChunk chunk = new ByteChunk(bytesRead);
-        final byte[] buf = new byte[bytesRead];
-        dst.get(buf);
-        chunk.setBytes(buf, 0, bytesRead);
-        dst.compact();
-        try {
-          response.doWrite(chunk);
-        } catch (ClassCastException e) {
-          System.err.println("gone bad: " + e.getMessage());
-          e.printStackTrace(System.err);
+        if (bytesRead > 0) {
+          dst.flip();
+          final ByteChunk chunk = new ByteChunk(bytesRead);
+          final byte[] buf = new byte[bytesRead];
+          dst.get(buf);
+          chunk.setBytes(buf, 0, bytesRead);
+          dst.compact();
+          try {
+            response.doWrite(chunk);
+          } catch (ClassCastException e) {
+            System.err.println("gone bad: " + e.getMessage());
+            e.printStackTrace(System.err);
+          }
+          response.flush();
+          System.out.println(conn + " [proxy<-origin] " + bytesRead + " bytes read");
+          System.out.println(conn + " [proxy<-origin] " + decoder);
         }
-        response.flush();
-        System.out.println(conn + " [proxy<-origin] " + bytesRead + " bytes read");
-        System.out.println(conn + " [proxy<-origin] " + decoder);
         if (!dst.hasRemaining()) {
           // Output buffer is full. Suspend origin input until
           // the client handler frees up some space in the buffer
