@@ -49,6 +49,7 @@ public class ConnectingHandler implements NHttpClientHandler {
     // The shared state object is expected to be passed as an attachment
     ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) attachment;
 
+    // TODO: think of it, does this proxyTask buffer realy needs such protection?
     synchronized (proxyTask) {
       ConnState connState = proxyTask.getOriginState();
       if (connState != ConnState.IDLE) {
@@ -199,10 +200,10 @@ public class ConnectingHandler implements NHttpClientHandler {
       HttpResponse response = conn.getHttpResponse();
       HttpRequest request = proxyTask.getRequest();
 
-      final StatusLine statusLine = response.getStatusLine();
-      System.out.println(conn + " [proxy<-origin] << " + statusLine);
+      StatusLine line = response.getStatusLine();
+      System.out.println(conn + " [proxy<-origin] << " + line);
 
-      int statusCode = statusLine.getStatusCode();
+      int statusCode = line.getStatusCode();
       if (statusCode < HttpStatus.SC_OK) {
         // Ignore 1xx response
         return;
@@ -215,6 +216,13 @@ public class ConnectingHandler implements NHttpClientHandler {
 //        proxyTask.setResponse(response);
         proxyTask.setOriginState(ConnState.RESPONSE_RECEIVED);
 
+        clientResponse.setStatus(statusCode);
+        clientResponse.setMessage(line.getReasonPhrase());
+        for (Header header : response.getAllHeaders()) {
+          clientResponse.setHeader(header.getName(), header.getValue());
+        }
+        clientResponse.flush();
+
         if (!canResponseHaveBody(request, response)) {
           conn.resetInput();
           if (!this.connStrategy.keepAlive(response, context)) {
@@ -223,10 +231,6 @@ public class ConnectingHandler implements NHttpClientHandler {
             conn.close();
           }
         } else {
-          for (Header header : response.getAllHeaders()) {
-            clientResponse.setHeader(header.getName(), header.getValue());
-          }
-          clientResponse.flush();
           final HttpEntity httpEntity = response.getEntity();
           if (httpEntity.isStreaming()) {
             final InputStream is = httpEntity.getContent();
@@ -287,7 +291,12 @@ public class ConnectingHandler implements NHttpClientHandler {
         dst.get(buf);
         chunk.setBytes(buf, 0, bytesRead);
         dst.compact();
-        response.doWrite(chunk);
+        try {
+          response.doWrite(chunk);
+        } catch (ClassCastException e) {
+          System.err.println("gone bad: " + e.getMessage());
+          e.printStackTrace(System.err);
+        }
         response.flush();
         System.out.println(conn + " [proxy<-origin] " + bytesRead + " bytes read");
         System.out.println(conn + " [proxy<-origin] " + decoder);
@@ -307,6 +316,7 @@ public class ConnectingHandler implements NHttpClientHandler {
         if (decoder.isCompleted()) {
           System.out.println(conn + " [proxy<-origin] response body received");
           proxyTask.setOriginState(ConnState.RESPONSE_BODY_DONE);
+          response.setCommitted(true);
           response.finish();
           if (!this.connStrategy.keepAlive(conn.getHttpResponse(), context)) {
             System.out.println(conn + " [proxy<-origin] close connection");

@@ -3,8 +3,6 @@ package net.kungfoo.grizzly.proxy.impl;
 import com.sun.grizzly.tcp.Adapter;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
-import com.sun.grizzly.tcp.CompletionHandler;
-import com.sun.grizzly.util.buf.ByteChunk;
 import com.sun.grizzly.util.buf.MessageBytes;
 import com.sun.grizzly.util.http.MimeHeaders;
 import static net.kungfoo.grizzly.proxy.impl.HttpHeader.*;
@@ -12,17 +10,20 @@ import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.OPTIONS;
 import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
 import net.kungfoo.grizzly.proxy.impl.sample.ConnState;
 import net.kungfoo.grizzly.proxy.impl.sample.ProxyProcessingInfo;
-import org.apache.http.*;
+import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
+import org.apache.http.HttpStatus;
 import org.apache.http.message.BasicHttpRequest;
-import org.apache.http.protocol.HTTP;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
+import org.apache.http.nio.reactor.IOReactorStatus;
+import org.apache.http.protocol.HTTP;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import static java.text.MessageFormat.format;
+import java.util.Enumeration;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.Enumeration;
 
 /**
  * Simple HTTP Proxy Adapter.
@@ -43,7 +44,7 @@ public class ProxyAdapter implements Adapter {
    * {@inheritDoc}
    */
   public void service(Request request, Response response) throws Exception {
-    String uri = request.requestURI().toString();
+    String uri = request.unparsedURI().toString();
 
     final MessageBytes method = request.method();
     logURIAndMethod(uri, method);
@@ -56,6 +57,7 @@ public class ProxyAdapter implements Adapter {
 
     ProxyProcessingInfo proxyTask = new ProxyProcessingInfo();
 
+    // TODO: think of it.
     synchronized (proxyTask) {
 
       // from connected
@@ -67,8 +69,16 @@ public class ProxyAdapter implements Adapter {
 
       InetSocketAddress address = new InetSocketAddress(targetHost, targetPort);
 
-      connectingIOReactor.connect(address, null, proxyTask, null);
-
+      if (!IOReactorStatus.ACTIVE.equals(connectingIOReactor.getStatus())) {
+        System.err.println("Connecting reactor not running.");
+        response.setStatus(500);
+        response.setMessage("Internal Booo");
+        response.finish();
+        return;
+      } else {
+        connectingIOReactor.connect(address, null, proxyTask, null);
+      }
+      
       // from requestReceived
       try {
         System.out.println(request + " [client->proxy] >> " + request.unparsedURI().toString());
@@ -81,25 +91,6 @@ public class ProxyAdapter implements Adapter {
           response.setStatus(HttpStatus.SC_CONTINUE);
           response.sendHeaders();
         }
-
-        response.suspend(Long.MAX_VALUE, proxyTask, new CompletionHandler<ProxyProcessingInfo>() {
-          /**
-           * Invoked when an operation has resumed {@link com.sun.grizzly.tcp.Response#resume}
-           */
-          public void resumed(ProxyProcessingInfo attachment) {
-            System.out.println("resumed");
-
-          }
-
-          /**
-           * Invoked when an {@link com.sun.grizzly.tcp.Response#cancel} is invoked or when a
-           * timeout expire.
-           */
-          public void cancelled(ProxyProcessingInfo attachment) {
-            System.out.println("cancelled");
-
-          }
-        });
       } catch (IOException ignore) {
         System.out.println("err " + ignore.getMessage());
       }
