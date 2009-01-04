@@ -1,5 +1,7 @@
-package net.kungfoo.grizzly.proxy.impl.sample;
+package net.kungfoo.grizzly.proxy.impl;
 
+import com.sun.grizzly.tcp.Response;
+import com.sun.grizzly.util.buf.ByteChunk;
 import org.apache.http.*;
 import org.apache.http.nio.ContentDecoder;
 import org.apache.http.nio.ContentEncoder;
@@ -15,9 +17,6 @@ import org.apache.http.protocol.HttpProcessor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-
-import com.sun.grizzly.tcp.Response;
-import com.sun.grizzly.util.buf.ByteChunk;
 
 /**
  * Connecting Handler.

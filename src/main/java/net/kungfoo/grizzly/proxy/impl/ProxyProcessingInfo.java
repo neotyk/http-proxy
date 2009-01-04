@@ -1,8 +1,7 @@
-package net.kungfoo.grizzly.proxy.impl.sample;
+package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.tcp.Response;
-import net.kungfoo.grizzly.proxy.impl.ReqRespHolder;
-import static net.kungfoo.grizzly.proxy.impl.sample.ConnState.IDLE;
+import static net.kungfoo.grizzly.proxy.impl.ConnState.IDLE;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.nio.IOControl;
@@ -13,6 +12,7 @@ import java.nio.ByteBuffer;
 /**
  * Proxy Processing Information.
  *
+ * TODO: clean this one up.
  * @author Hubert Iwaniuk.
  */
 public class ProxyProcessingInfo {
@@ -31,7 +31,6 @@ public class ProxyProcessingInfo {
 
   private HttpRequest request;
   private Response response;
-  private ReqRespHolder requestResponseHolder;
 
   public ProxyProcessingInfo() {
     super();
@@ -107,12 +106,6 @@ public class ProxyProcessingInfo {
   }
 
   public void shutdown() {
-/*        if (this.clientIOControl != null) {
-            try {
-                this.clientIOControl.shutdown();
-            } catch (IOException ignore) {
-            }
-        }*/
     if (this.originIOControl != null) {
       try {
         this.originIOControl.shutdown();
@@ -121,11 +114,4 @@ public class ProxyProcessingInfo {
     }
   }
 
-  public void setRequestResponseHolder(ReqRespHolder requestResponseHolder) {
-    this.requestResponseHolder = requestResponseHolder;
-  }
-
-  public ReqRespHolder getRequestResponseHolder() {
-    return requestResponseHolder;
-  }
 }

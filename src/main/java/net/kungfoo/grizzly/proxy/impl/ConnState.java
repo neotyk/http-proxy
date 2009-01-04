@@ -1,4 +1,4 @@
-package net.kungfoo.grizzly.proxy.impl.sample;
+package net.kungfoo.grizzly.proxy.impl;
 
 /**
  * Connection State Enumeration.

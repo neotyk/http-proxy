@@ -8,8 +8,6 @@ import com.sun.grizzly.util.http.MimeHeaders;
 import static net.kungfoo.grizzly.proxy.impl.HttpHeader.*;
 import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.OPTIONS;
 import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
-import net.kungfoo.grizzly.proxy.impl.sample.ConnState;
-import net.kungfoo.grizzly.proxy.impl.sample.ProxyProcessingInfo;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpStatus;

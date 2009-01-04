@@ -1,27 +1,27 @@
 package net.kungfoo.grizzly.proxy.impl.sample;
 
+import com.sun.grizzly.tcp.Response;
+import net.kungfoo.grizzly.proxy.impl.ConnState;
+import net.kungfoo.grizzly.proxy.impl.ProxyProcessingInfo;
+import org.apache.http.*;
 import org.apache.http.nio.*;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
-import org.apache.http.*;
-import org.apache.http.params.HttpParams;
 import org.apache.http.params.DefaultedHttpParams;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HTTP;
+import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.ExecutionContext;
+import org.apache.http.protocol.HTTP;
+import org.apache.http.protocol.HttpContext;
+import org.apache.http.protocol.HttpProcessor;
 
-import java.net.InetSocketAddress;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-
-import com.sun.grizzly.tcp.Response;
 
 /**
  * Listening Handler.
- * <p/>
- * Handles Client to proxy connections.
  *
  * @author Hubert Iwaniuk.
+ * @deprecated Used only as reference, don't code here.
  */
 @SuppressWarnings({"UseOfSystemOutOrSystemErr"})
 class ListeningHandler implements NHttpServiceHandler {

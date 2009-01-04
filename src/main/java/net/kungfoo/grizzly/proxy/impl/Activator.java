@@ -1,7 +1,6 @@
 package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.http.SelectorThread;
-import net.kungfoo.grizzly.proxy.impl.sample.ConnectingHandler;
 import org.apache.http.impl.DefaultConnectionReuseStrategy;
 import org.apache.http.impl.nio.DefaultClientIOEventDispatch;
 import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
