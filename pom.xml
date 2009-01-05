@@ -10,7 +10,22 @@
 
   <packaging>bundle</packaging>
   <version>0.1.1-SNAPSHOT</version>
-
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Hubert Iwaniuk</name>
+      <email>neotyk@kungfoo.pl</email>
+      <roles>
+        <role>admin</role>
+        <role>dev</role>
+      </roles>
+    </developer>
+  </developers>
   <name>KungFoo Base HTTP Proxy</name>
 
   <build>
@@ -75,6 +90,25 @@
         <artifactId>maven-pax-plugin</artifactId>
         <version>1.4</version>
       </plugin>
+      <plugin>
+        <groupId>com.google.code.maven-license-plugin</groupId>
+        <artifactId>maven-license-plugin</artifactId>
+        <version>1.4.0</version>
+        <configuration>
+          <header>src/etc/header.txt</header>
+          <properties>
+            <year>2009</year>
+            <email>neotyk@kungfoo.pl</email>
+            <username>Hubert Iwaniuk</username>
+          </properties>
+          <excludes>
+            <exclude>target/**</exclude>
+            <exclude>runner/**</exclude>
+            <exclude>.git/**</exclude>
+            <exclude>README</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 
@@ -112,30 +146,18 @@
       <artifactId>org.osgi.core</artifactId>
       <version>1.2.0</version>
     </dependency>
-<!--
-    <dependency>
-      <groupId>org.apache.felix</groupId>
-      <artifactId>org.apache.felix.main</artifactId>
-      <version>1.4.0</version>
-    </dependency>
--->
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpcore-osgi</artifactId>
       <version>4.0-beta3</version>
     </dependency>
-<!--
     <dependency>
-      <groupId>org.ops4j.pax.logging</groupId>
-      <artifactId>pax-logging-api</artifactId>
-      <version>1.2.1</version>
+      <groupId>org.testng</groupId>
+      <artifactId>testng</artifactId>
+      <version>5.8</version>
+      <classifier>jdk15</classifier>
+      <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.ops4j.pax.logging</groupId>
-      <artifactId>pax-logging-service</artifactId>
-      <version>1.2.1</version>
-    </dependency>
--->
   </dependencies>
 
   <repositories>
@@ -152,6 +174,17 @@
     <repository>
       <id>ops4j.releases</id>
       <url>http://repository.ops4j.org/maven2/</url>
+    </repository>
+    <repository>
+      <id>mc-release</id>
+      <name>mc-release</name>
+      <url>http://mc-repo.googlecode.com/svn/maven2/releases</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
     </repository>
   </repositories>
 
