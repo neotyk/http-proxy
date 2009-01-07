@@ -113,7 +113,7 @@
   </build>
 
   <properties>
-    <grizzly.version>1.9.2</grizzly.version>
+    <grizzly.version>1.9.3-SNAPSHOT</grizzly.version>
   </properties>
   <dependencies>
     <dependency>
@@ -156,6 +156,12 @@
       <artifactId>testng</artifactId>
       <version>5.8</version>
       <classifier>jdk15</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.sun.grizzly</groupId>
+      <artifactId>grizzly-http-servlet</artifactId>
+      <version>${grizzly.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

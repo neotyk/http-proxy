@@ -16,6 +16,7 @@
 package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.tcp.Response;
+import com.sun.grizzly.tcp.Request;
 import static net.kungfoo.grizzly.proxy.impl.ConnState.IDLE;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
@@ -47,6 +48,7 @@ public class ProxyProcessingInfo {
   private HttpRequest request;
   private Response response;
   private Runnable completion;
+  private Request originalRequest;
 
   public ProxyProcessingInfo() {
     super();
@@ -136,5 +138,13 @@ public class ProxyProcessingInfo {
 
   public Runnable getCompletion() {
     return completion;
+  }
+
+  public void setOriginalRequest(Request originalRequest) {
+    this.originalRequest = originalRequest;
+  }
+
+  public Request getOriginalRequest() {
+    return originalRequest;
   }
 }

@@ -16,18 +16,18 @@
 package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.http.embed.GrizzlyWebServer;
+import com.sun.grizzly.http.servlet.ServletAdapter;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.Proxy;
-import java.net.URL;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
+import java.net.*;
 
 
 /**
@@ -36,8 +36,8 @@ import java.net.URL;
  * @author Hubert Iwaniuk
  */
 public class TestProxy {
-  @Test(timeOut = 500, invocationCount = 100, threadPoolSize = 5)
-  public void test200() throws Exception {
+  @Test(timeOut = 500)
+  public void testGET200() throws Exception {
     String fileName = "index.html";
     URL url = new URL("http", "localhost", PORT, "/" + fileName);
     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
@@ -45,18 +45,18 @@ public class TestProxy {
     Assert.assertTrue(urlConnection.usingProxy(), "Should be using proxy");
     File file = new File(WEB_ROOT, fileName);
     Assert.assertTrue(file.exists(), "No test file present " + file.getAbsolutePath());
-    Assert.assertEquals(200, urlConnection.getResponseCode(), "Expecting 200 status code");
+    Assert.assertEquals(urlConnection.getResponseCode(), 200, "Expecting 200 status code");
     long fileLength = file.length();
-    Assert.assertEquals(fileLength, urlConnection.getContentLength(), "Content length should be identical");
+    Assert.assertEquals(urlConnection.getContentLength(), fileLength, "Content length should be identical");
     InputStream is = urlConnection.getInputStream();
     int available = is.available();
-    Assert.assertEquals(fileLength, available, "Body length should be identical");
+    Assert.assertEquals(available, fileLength, "Body length should be identical");
     int read = is.read(new byte[available]);
-    Assert.assertEquals(fileLength, read, "Should be able to read all body");
+    Assert.assertEquals(read, fileLength, "Should be able to read all body");
   }
 
-  @Test(timeOut = 500, invocationCount = 100, threadPoolSize = 5)
-  public void test404() throws IOException {
+  @Test(timeOut = 500)
+  public void testGET404() throws IOException {
     String fileName = "whereAreYou";
     URL url = new URL("http", "localhost", PORT, "/" + fileName);
     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
@@ -64,7 +64,22 @@ public class TestProxy {
     Assert.assertTrue(urlConnection.usingProxy(), "Should be using proxy");
     File file = new File(WEB_ROOT, fileName);
     Assert.assertFalse(file.exists(), "Test file present " + file.getAbsolutePath());
-    Assert.assertEquals(404, urlConnection.getResponseCode(), "Expecting 404 status code");
+    Assert.assertEquals(urlConnection.getResponseCode(), 404, "Expecting 404 status code");
+  }
+
+  @Test(timeOut = 500)
+  public void testPUT201() throws IOException {
+    String location = "uploader/upload";
+    URL url = new URL("http", "localhost", PORT, "/" + location);
+    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
+    urlConnection.setRequestMethod("PUT");
+    urlConnection.setDoOutput(true);
+    OutputStream outputStream = urlConnection.getOutputStream();
+    outputStream.write(UPLOAD_MSG.getBytes());
+    outputStream.flush();
+    urlConnection.connect();
+    Assert.assertTrue(urlConnection.usingProxy(), "Should be using proxy");
+    Assert.assertEquals(urlConnection.getResponseCode(), 201, "Expecting 201 status code");
   }
 
   @AfterClass
@@ -75,13 +90,33 @@ public class TestProxy {
 
   @BeforeClass
   private void startup() throws Exception {
-    this.server = new GrizzlyWebServer(PORT, WEB_ROOT);
-    this.server.start();
+    server = new GrizzlyWebServer(PORT, WEB_ROOT);
+    ServletAdapter servletAdapter = new ServletAdapter(WEB_ROOT);
+    servletAdapter.setServletInstance(new HttpServlet() {
+      @Override
+      protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(req.getInputStream()));
+        String postData = reader.readLine();
+        System.out.println("got '" + postData + "'");
+        if (UPLOAD_MSG.equals(postData)) {
+          resp.setStatus(HttpServletResponse.SC_CREATED);
+          resp.setHeader("Location", req.getRequestURI());
+        } else {
+          resp.sendError(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, "Need more input to compute");
+        }
+      }
+    });
+    servletAdapter.setHandleStaticResources(true);
+    servletAdapter.setContextPath("/uploader");
+    servletAdapter.setServletPath("/upload");
+    server.addGrizzlyAdapter(servletAdapter, new String[]{"/uploader"});
+    server.start();
 
     proxyActivator = new Activator();
     proxyActivator.start(null);
   }
 
+  private static final String UPLOAD_MSG = "Uploaded message";
   private static final String WEB_ROOT = "src/test/resources/data/";
   private static final int PORT = 9123;
   private GrizzlyWebServer server;

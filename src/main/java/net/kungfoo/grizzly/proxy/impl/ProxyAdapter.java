@@ -15,10 +15,10 @@
  */
 package net.kungfoo.grizzly.proxy.impl;
 
+import com.sun.grizzly.tcp.ActionCode;
 import com.sun.grizzly.tcp.Adapter;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
-import com.sun.grizzly.tcp.ActionCode;
 import com.sun.grizzly.util.buf.MessageBytes;
 import com.sun.grizzly.util.http.MimeHeaders;
 import static net.kungfoo.grizzly.proxy.impl.HttpHeader.*;
@@ -27,6 +27,7 @@ import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpStatus;
+import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
 import org.apache.http.nio.reactor.IOReactorStatus;
@@ -83,6 +84,7 @@ public class ProxyAdapter implements Adapter {
       // Initialize connection state
       proxyTask.setTarget(new HttpHost(targetHost, targetPort));
       proxyTask.setRequest(convert(method.getString(), uri, request));
+      proxyTask.setOriginalRequest(request);
       Runnable completion = (Runnable) request.getAttribute(CALLBACK_KEY);
       proxyTask.setCompletion(completion);
       proxyTask.setResponse(response);
@@ -131,7 +133,12 @@ public class ProxyAdapter implements Adapter {
   }
 
   private static HttpRequest convert(String method, String uri, Request request) {
-    HttpRequest req = new BasicHttpRequest(method, uri);
+    HttpRequest req;
+    if (request.getContentLength() > 0) {
+      req = new BasicHttpEntityEnclosingRequest(method, uri);
+    } else {
+      req = new BasicHttpRequest(method, uri);
+    }
     final MimeHeaders mimeHeaders = request.getMimeHeaders();
     final Enumeration names = mimeHeaders.names();
     while (names.hasMoreElements()) {

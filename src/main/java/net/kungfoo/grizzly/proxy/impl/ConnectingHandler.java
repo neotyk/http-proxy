@@ -15,9 +15,12 @@
  */
 package net.kungfoo.grizzly.proxy.impl;
 
+import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
 import com.sun.grizzly.util.buf.ByteChunk;
 import org.apache.http.*;
+import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.nio.ContentDecoder;
 import org.apache.http.nio.ContentEncoder;
 import org.apache.http.nio.NHttpClientConnection;
@@ -99,8 +102,8 @@ public class ConnectingHandler implements NHttpClientHandler {
       }
 
       // Remove hop-by-hop headers
-      request.removeHeaders(HTTP.CONTENT_LEN);
-      request.removeHeaders(HTTP.TRANSFER_ENCODING);
+//      request.removeHeaders(HTTP.CONTENT_LEN);
+//      request.removeHeaders(HTTP.TRANSFER_ENCODING);
       request.removeHeaders(HTTP.CONN_DIRECTIVE);
       request.removeHeaders("Keep-Alive");
       request.removeHeaders("Proxy-Authenticate");
@@ -124,6 +127,13 @@ public class ConnectingHandler implements NHttpClientHandler {
 
         this.httpProcessor.process(request, context);
         // and send it to the origin server
+        Request originalRequest = proxyTask.getOriginalRequest();
+        int length = originalRequest.getContentLength();
+        if (length > 0) {
+          BasicHttpEntity httpEntity = new BasicHttpEntity();
+          httpEntity.setContentLength(originalRequest.getContentLengthLong());
+          ((BasicHttpEntityEnclosingRequest) request).setEntity(httpEntity);
+        }
         conn.submitRequest(request);
         // Update connection state
         proxyTask.setOriginState(ConnState.REQUEST_SENT);
@@ -171,6 +181,9 @@ public class ConnectingHandler implements NHttpClientHandler {
 
         // TODO: propper handling of POST
         ByteBuffer src = proxyTask.getInBuffer();
+        ByteChunk chunk = new ByteChunk(src.limit());
+        int read = proxyTask.getOriginalRequest().doRead(chunk);
+        src.put(chunk.getBytes(),0, read);
         src.flip();
         int bytesWritten = encoder.write(src);
         System.out.println(conn + " [proxy->origin] " + bytesWritten + " bytes written");
