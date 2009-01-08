@@ -17,6 +17,7 @@ package net.kungfoo.grizzly.proxy.impl;
 
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
+import com.sun.grizzly.tcp.InputBuffer;
 import com.sun.grizzly.util.buf.ByteChunk;
 import org.apache.http.*;
 import org.apache.http.entity.BasicHttpEntity;
@@ -182,7 +183,9 @@ public class ConnectingHandler implements NHttpClientHandler {
         // TODO: propper handling of POST
         ByteBuffer src = proxyTask.getInBuffer();
         ByteChunk chunk = new ByteChunk(src.limit());
-        int read = proxyTask.getOriginalRequest().doRead(chunk);
+        Request originalRequest = proxyTask.getOriginalRequest();
+        InputBuffer buffer = originalRequest.getInputBuffer();
+        int read = buffer.doRead(chunk, originalRequest);
         src.put(chunk.getBytes(),0, read);
         src.flip();
         int bytesWritten = encoder.write(src);

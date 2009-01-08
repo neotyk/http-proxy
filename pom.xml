@@ -20,13 +20,10 @@
     <developer>
       <name>Hubert Iwaniuk</name>
       <email>neotyk@kungfoo.pl</email>
-      <roles>
-        <role>admin</role>
-        <role>dev</role>
-      </roles>
     </developer>
   </developers>
   <name>KungFoo Base HTTP Proxy</name>
+  <description>HTTP Proxy based on Grizzly Framework.</description>
 
   <build>
     <defaultGoal>install</defaultGoal>
@@ -113,7 +110,7 @@
   </build>
 
   <properties>
-    <grizzly.version>1.9.3-SNAPSHOT</grizzly.version>
+    <grizzly.version>1.9.3</grizzly.version>
   </properties>
   <dependencies>
     <dependency>
@@ -128,7 +125,7 @@
     </dependency>
     <dependency>
       <groupId>com.sun.grizzly</groupId>
-      <artifactId>grizzly-http-utils</artifactId>
+      <artifactId>grizzly-utils</artifactId>
       <version>${grizzly.version}</version>
     </dependency>
     <dependency>

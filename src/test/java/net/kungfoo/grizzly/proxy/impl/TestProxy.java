@@ -67,12 +67,12 @@ public class TestProxy {
     Assert.assertEquals(urlConnection.getResponseCode(), 404, "Expecting 404 status code");
   }
 
-  @Test(timeOut = 500)
-  public void testPUT201() throws IOException {
+  @Test
+  public void testPOST201() throws IOException {
     String location = "uploader/upload";
     URL url = new URL("http", "localhost", PORT, "/" + location);
     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
-    urlConnection.setRequestMethod("PUT");
+    urlConnection.setRequestMethod("POST");
     urlConnection.setDoOutput(true);
     OutputStream outputStream = urlConnection.getOutputStream();
     outputStream.write(UPLOAD_MSG.getBytes());
@@ -94,7 +94,7 @@ public class TestProxy {
     ServletAdapter servletAdapter = new ServletAdapter(WEB_ROOT);
     servletAdapter.setServletInstance(new HttpServlet() {
       @Override
-      protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+      protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(req.getInputStream()));
         String postData = reader.readLine();
         System.out.println("got '" + postData + "'");

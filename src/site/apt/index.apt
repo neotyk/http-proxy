@@ -1,0 +1,21 @@
+ ------
+ Introduction
+ ------
+ Hubert Iwaniuk
+ ------
+ 08 Jan 2009
+ ------
+
+
+HTTP Base Proxy
+
+  HTTP Proxy Base is base for different types of HTTP Proxy.
+  It's {{{https://grizzly.dev.java.net}Grizzly}} based and uses {{{http://www.osgi.org}OSGi}} as runtime platform.
+
+* Usage
+
+  Instructions on how to use it can be found {{{usage.html}here}}.
+
+* Connection state
+
+  Internal connection state machine is describe {{{connection.html}here}}.

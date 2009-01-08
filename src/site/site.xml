@@ -1,0 +1,25 @@
+<project name="HTTP Proxy Base">
+
+    <body>
+        <links>
+            <item name="Grizzly" href="https://grizzly.dev.java.net/"/>
+            <item name="OSGi" href="http://www.osgi.org/"/>
+            <item name="Maven 2" href="http://maven.apache.org/"/>
+        </links>
+
+        <menu name="Overview">
+            <item name="Introduction" href="index.html"/>
+            <item name="Usage" href="usage.html"/>
+            <item name="FAQ" href="faq.html"/>
+        </menu>
+
+        <menu name="Internals">
+            <item name="Connection state" href="connection.html"/>
+        </menu>
+
+        <menu ref="reports"/>
+
+    </body>
+</project>
+
+        

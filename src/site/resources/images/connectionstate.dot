@@ -1,0 +1,30 @@
+digraph conn_state {
+    idle [ label="IDLE" ]
+    connected [ label="CONNECTED" ]
+    request_received [ label="REQUEST_RECEIVED" ]
+    request_sent [ label="REQUEST_SENT" ]
+    request_body_stream [ label = "RESPONSE_BODY_STREAM" ]
+    request_body_done [ label = "REQUEST_BODY_DONE" ]
+    response_received [ label = "RESPONSE_RECEIVED" ]
+    response_sent [ label = "RESPONSE_SENT" ]
+    response_body_stream [ label = "RESPONSE_BODY_STREAM" ]
+    response_body_done [ label = "RESPONSE_BODY_DONE" ]
+    closing [ label = "CLOSING" ]
+    closed [ label = "CLOSED" ]
+
+    idle -> connected
+    connected -> request_received
+    request_received -> request_body_stream
+    request_received -> request_body_done
+    request_received -> request_sent
+    request_body_stream -> request_body_done
+    request_body_done -> request_sent
+    request_sent -> response_received
+    response_received -> response_body_stream
+    response_received -> response_body_done
+    response_received -> response_sent
+    response_body_stream -> response_body_done
+    response_body_done -> response_sent
+    response_sent -> closing
+    closing -> closed
+}

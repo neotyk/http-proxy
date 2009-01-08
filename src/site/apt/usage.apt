@@ -1,0 +1,15 @@
+		---
+		HTTP Base Proxy - Usage
+		---
+		Hubert Iwaniuk
+		---
+		8 Jan 2009
+		---
+
+Installing
+
+  For now checkout the code and
+
++---+
+  mvn clean install pax:provision
++---+

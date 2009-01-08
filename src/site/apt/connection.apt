@@ -1,0 +1,11 @@
+		---
+		HTTP Base Proxy - Internal Connection State
+		---
+		Hubert Iwaniuk
+		---
+		8 Jan 2009
+		---
+
+Connection state machine
+
+[images/connectionstate.png] Connection States
