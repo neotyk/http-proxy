@@ -19,6 +19,7 @@ import com.sun.grizzly.tcp.ActionCode;
 import com.sun.grizzly.tcp.Adapter;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
+import com.sun.grizzly.tcp.http11.InternalInputBuffer;
 import com.sun.grizzly.util.buf.MessageBytes;
 import com.sun.grizzly.util.http.MimeHeaders;
 import static net.kungfoo.grizzly.proxy.impl.HttpHeader.*;
@@ -27,8 +28,6 @@ import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpStatus;
-import org.apache.http.entity.EntityTemplate;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
@@ -37,7 +36,6 @@ import org.apache.http.nio.reactor.IOReactorStatus;
 import org.apache.http.protocol.HTTP;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import static java.text.MessageFormat.format;
 import java.util.Enumeration;
@@ -146,6 +144,7 @@ public class ProxyAdapter implements Adapter {
       req = new BasicHttpEntityEnclosingRequest(method, uri);
       final BasicHttpEntity httpEntity = new BasicHttpEntity();
       httpEntity.setContentLength(len);
+//      httpEntity.setContent(((InternalInputBuffer) request.getInputBuffer()).getInputStream());
       ((BasicHttpEntityEnclosingRequest) req).setEntity(httpEntity);
     } else {
       req = new BasicHttpRequest(method, uri);

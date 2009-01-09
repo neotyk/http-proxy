@@ -111,7 +111,7 @@ public class Activator implements BundleActivator {
     connectingIOReactor = new DefaultConnectingIOReactor(1, params);
 
     BasicHttpProcessor originServerProc = new BasicHttpProcessor();
-//    originServerProc.addInterceptor(new RequestContent());
+    originServerProc.addInterceptor(new RequestContent());
     originServerProc.addInterceptor(new RequestTargetHost());
     originServerProc.addInterceptor(new RequestConnControl());
     originServerProc.addInterceptor(new RequestUserAgent());

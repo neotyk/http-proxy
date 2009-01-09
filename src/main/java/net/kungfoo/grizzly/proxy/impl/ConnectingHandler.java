@@ -169,8 +169,10 @@ public class ConnectingHandler implements NHttpClientHandler {
         if (length > 0) {
           BasicHttpEntity httpEntity = new BasicHttpEntity();
           httpEntity.setContentLength(originalRequest.getContentLengthLong());
+/*
           httpEntity.setContent(((InternalInputBuffer) originalRequest.getInputBuffer()).getInputStream());
           ((BasicHttpEntityEnclosingRequest) request).setEntity(httpEntity);
+*/
         }
         conn.submitRequest(request);
         // Update connection state
@@ -188,6 +190,8 @@ public class ConnectingHandler implements NHttpClientHandler {
   }
 
   private static void requestReadyCleanUpHeaders(final HttpRequest request) {
+    request.removeHeaders(HTTP.CONTENT_LEN);
+    request.removeHeaders(HTTP.TRANSFER_ENCODING);
     request.removeHeaders(HTTP.CONN_DIRECTIVE);
     request.removeHeaders("Keep-Alive");
     request.removeHeaders("Proxy-Authenticate");
@@ -231,11 +235,16 @@ public class ConnectingHandler implements NHttpClientHandler {
 
         // TODO: propper handling of POST
         ByteBuffer src = proxyTask.getInBuffer();
-        ByteChunk chunk = new ByteChunk(src.limit());
+        final int srcSize = src.limit();
+        ByteChunk chunk = new ByteChunk(srcSize);
         Request originalRequest = proxyTask.getOriginalRequest();
         InputBuffer buffer = originalRequest.getInputBuffer();
         int read = buffer.doRead(chunk, originalRequest);
-        src.put(chunk.getBytes(),0, read);
+        if (read > srcSize) {
+          src = ByteBuffer.wrap(chunk.getBytes(), chunk.getOffset(), read);
+        } else {
+          src.put(chunk.getBytes(),chunk.getOffset(), read);
+        }
         src.flip();
         int bytesWritten = encoder.write(src);
         System.out.println(conn + " [proxy->origin] " + bytesWritten + " bytes written");

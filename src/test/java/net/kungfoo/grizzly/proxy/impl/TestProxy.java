@@ -68,9 +68,9 @@ public class TestProxy {
   }
 
   @Test
-  public void testPOST201() throws IOException {
+  public void testPOST201Small() throws IOException {
     String location = "uploader/upload";
-    URL url = new URL("http", "localhost", 8293, "/" + location);
+    URL url = new URL("http", "localhost", PORT, "/" + location);
     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
     urlConnection.setRequestMethod("POST");
     urlConnection.setDoOutput(true);
@@ -80,6 +80,31 @@ public class TestProxy {
     urlConnection.connect();
     Assert.assertTrue(urlConnection.usingProxy(), "Should be using proxy");
     Assert.assertEquals(urlConnection.getResponseCode(), 201, "Expecting 201 status code");
+  }
+
+  @Test
+  public void testPOST201Big() throws IOException {
+    String location = "uploader/upload";
+    URL url = new URL("http", "localhost", PORT, "/" + location);
+    HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
+    urlConnection.setRequestMethod("POST");
+    urlConnection.setDoOutput(true);
+    OutputStream outputStream = urlConnection.getOutputStream();
+    populateBody(outputStream);
+    outputStream.flush();
+    urlConnection.connect();
+    Assert.assertTrue(urlConnection.usingProxy(), "Should be using proxy");
+    Assert.assertEquals(urlConnection.getResponseCode(), 201, "Expecting 201 status code");
+  }
+
+  private void populateBody(final OutputStream outputStream) throws IOException {
+    final int length = 1024 * 1024;
+    byte big [] = new byte[length];
+    final byte[] abcd = new byte[] {'a', 'b', 'c', 'd'};
+    for (int i=0; i<length; i++) {
+      big[i] = abcd[i % abcd.length];
+    }
+    outputStream.write(big);
   }
 
   @AfterClass

@@ -54,8 +54,8 @@ public class ProxyProcessingInfo {
     super();
     this.originState = IDLE;
     this.clientState = IDLE;
-    this.inBuffer = ByteBuffer.allocateDirect(1024);
-    this.outBuffer = ByteBuffer.allocateDirect(1024);
+    this.inBuffer = ByteBuffer.allocateDirect(1024*8);
+    this.outBuffer = ByteBuffer.allocateDirect(1024*8);
   }
 
   public ByteBuffer getInBuffer() {
