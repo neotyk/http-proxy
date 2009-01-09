@@ -27,6 +27,9 @@ import static net.kungfoo.grizzly.proxy.impl.HttpMethodName.TRACE;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpStatus;
+import org.apache.http.entity.EntityTemplate;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.BasicHttpEntity;
 import org.apache.http.message.BasicHttpEntityEnclosingRequest;
 import org.apache.http.message.BasicHttpRequest;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
@@ -34,6 +37,7 @@ import org.apache.http.nio.reactor.IOReactorStatus;
 import org.apache.http.protocol.HTTP;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 import static java.text.MessageFormat.format;
 import java.util.Enumeration;
@@ -115,6 +119,9 @@ public class ProxyAdapter implements Adapter {
         // Update connection state
         proxyTask.setClientState(ConnState.REQUEST_RECEIVED);
 
+        if (request.getContentLength() != 0) {
+          proxyTask.setClientState(ConnState.REQUEST_BODY_DONE);
+        }
         // See if the client expects a 100-Continue
         if (isExpectContinue(request)) {
           response.setStatus(HttpStatus.SC_CONTINUE);
@@ -134,8 +141,12 @@ public class ProxyAdapter implements Adapter {
 
   private static HttpRequest convert(String method, String uri, Request request) {
     HttpRequest req;
-    if (request.getContentLength() > 0) {
+    final int len = request.getContentLength();
+    if (len > 0) {
       req = new BasicHttpEntityEnclosingRequest(method, uri);
+      final BasicHttpEntity httpEntity = new BasicHttpEntity();
+      httpEntity.setContentLength(len);
+      ((BasicHttpEntityEnclosingRequest) req).setEntity(httpEntity);
     } else {
       req = new BasicHttpRequest(method, uri);
     }

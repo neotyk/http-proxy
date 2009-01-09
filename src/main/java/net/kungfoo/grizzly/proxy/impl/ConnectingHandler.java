@@ -18,6 +18,7 @@ package net.kungfoo.grizzly.proxy.impl;
 import com.sun.grizzly.tcp.Request;
 import com.sun.grizzly.tcp.Response;
 import com.sun.grizzly.tcp.InputBuffer;
+import com.sun.grizzly.tcp.http11.InternalInputBuffer;
 import com.sun.grizzly.util.buf.ByteChunk;
 import org.apache.http.*;
 import org.apache.http.entity.BasicHttpEntity;
@@ -41,6 +42,7 @@ import java.nio.ByteBuffer;
  * Connecting Handler.
  * <p/>
  * Handler for Proxy to target server interactions.
+ * TODO: repalce sout with propper logging.
  *
  * @author Hubert Iwaniuk.
  */
@@ -49,6 +51,7 @@ public class ConnectingHandler implements NHttpClientHandler {
 
   private final HttpProcessor httpProcessor;
   private final ConnectionReuseStrategy connStrategy;
+
   private final HttpParams params;
 
   public ConnectingHandler(
@@ -61,13 +64,14 @@ public class ConnectingHandler implements NHttpClientHandler {
     this.params = params;
   }
 
+  /** {@inheritDoc} */
   public void connected(final NHttpClientConnection conn, final Object attachment) {
     System.out.println(conn + " [proxy->origin] conn open");
 
     // The shared state object is expected to be passed as an attachment
     ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) attachment;
 
-    // TODO: think of it, does this proxyTask buffer realy needs such protection?
+    // TODO: change it to ReentrantLock
     synchronized (proxyTask) {
       ConnState connState = proxyTask.getOriginState();
       if (connState != ConnState.IDLE) {
@@ -88,32 +92,64 @@ public class ConnectingHandler implements NHttpClientHandler {
     }
   }
 
+  /** {@inheritDoc} */
+  public void closed(final NHttpClientConnection conn) {
+    System.out.println(conn + " [proxy->origin] conn closed");
+    HttpContext context = conn.getContext();
+    ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) context.getAttribute(ProxyProcessingInfo.ATTRIB);
+
+    if (proxyTask != null) {
+      // TODO: change it to ReentrantLock
+      synchronized (proxyTask) {
+        proxyTask.setOriginState(ConnState.CLOSED);
+        if (!proxyTask.getResponse().isCommitted()) {
+          proxyTask.getCompletion().run();
+        }
+      }
+    }
+  }
+
+  /** {@inheritDoc} */
+  public void timeout(final NHttpClientConnection conn) {
+    System.out.println(conn + " [proxy->origin] timeout");
+    shutdownConnection(conn);
+  }
+
+  /** {@inheritDoc} */
+  public void exception(final NHttpClientConnection conn, final HttpException ex) {
+    shutdownConnection(conn);
+    System.out.println(conn + " [proxy->origin] HTTP error: " + ex.getMessage());
+  }
+
+  /** {@inheritDoc} */
+  public void exception(final NHttpClientConnection conn, final IOException ex) {
+    shutdownConnection(conn);
+    System.out.println(conn + " [proxy->origin] I/O error: " + ex.getMessage());
+  }
+
+  /**
+   * Triggered when the connection is ready to send an HTTP request.
+   *
+   * @see NHttpClientConnection
+   *
+   * @param conn HTTP connection that is ready to send an HTTP request
+   */
   public void requestReady(final NHttpClientConnection conn) {
     System.out.println(conn + " [proxy->origin] request ready");
 
     HttpContext context = conn.getContext();
     ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) context.getAttribute(ProxyProcessingInfo.ATTRIB);
 
+    // TODO: change it to ReentrantLock
     synchronized (proxyTask) {
-      if (reqReadyValidateConnectionState(proxyTask)) return;
+      if (requestReadyValidateConnectionState(proxyTask)) return;
 
       HttpRequest request = proxyTask.getRequest();
       if (request == null) {
         throw new IllegalStateException("HTTP request is null");
       }
 
-      // Remove hop-by-hop headers
-//      request.removeHeaders(HTTP.CONTENT_LEN);
-//      request.removeHeaders(HTTP.TRANSFER_ENCODING);
-      request.removeHeaders(HTTP.CONN_DIRECTIVE);
-      request.removeHeaders("Keep-Alive");
-      request.removeHeaders("Proxy-Authenticate");
-      request.removeHeaders("Proxy-Authorization");
-      request.removeHeaders("TE");
-      request.removeHeaders("Trailers");
-      request.removeHeaders("Upgrade");
-      // Remove host header
-      request.removeHeaders(HTTP.TARGET_HOST);
+      requestReadyCleanUpHeaders(request);
 
       HttpHost targetHost = proxyTask.getTarget();
 
@@ -133,6 +169,7 @@ public class ConnectingHandler implements NHttpClientHandler {
         if (length > 0) {
           BasicHttpEntity httpEntity = new BasicHttpEntity();
           httpEntity.setContentLength(originalRequest.getContentLengthLong());
+          httpEntity.setContent(((InternalInputBuffer) originalRequest.getInputBuffer()).getInputStream());
           ((BasicHttpEntityEnclosingRequest) request).setEntity(httpEntity);
         }
         conn.submitRequest(request);
@@ -150,7 +187,19 @@ public class ConnectingHandler implements NHttpClientHandler {
     }
   }
 
-  private boolean reqReadyValidateConnectionState(ProxyProcessingInfo proxyTask) {
+  private static void requestReadyCleanUpHeaders(final HttpRequest request) {
+    request.removeHeaders(HTTP.CONN_DIRECTIVE);
+    request.removeHeaders("Keep-Alive");
+    request.removeHeaders("Proxy-Authenticate");
+    request.removeHeaders("Proxy-Authorization");
+    request.removeHeaders("TE");
+    request.removeHeaders("Trailers");
+    request.removeHeaders("Upgrade");
+    // Remove host header
+    request.removeHeaders(HTTP.TARGET_HOST);
+  }
+
+  private static boolean requestReadyValidateConnectionState(ProxyProcessingInfo proxyTask) {
     ConnState connState = proxyTask.getOriginState();
     if (connState == ConnState.REQUEST_SENT
         || connState == ConnState.REQUEST_BODY_DONE) {
@@ -368,45 +417,10 @@ public class ConnectingHandler implements NHttpClientHandler {
     }
   }
 
-  public void closed(final NHttpClientConnection conn) {
-    System.out.println(conn + " [proxy->origin] conn closed");
-    HttpContext context = conn.getContext();
-    ProxyProcessingInfo proxyTask = (ProxyProcessingInfo) context.getAttribute(ProxyProcessingInfo.ATTRIB);
-
-    if (proxyTask != null) {
-      synchronized (proxyTask) {
-        proxyTask.setOriginState(ConnState.CLOSED);
-      }
-    }
-  }
-
-  public void exception(final NHttpClientConnection conn, final HttpException ex) {
-    shutdownConnection(conn);
-    System.out.println(conn + " [proxy->origin] HTTP error: " + ex.getMessage());
-  }
-
-  public void exception(final NHttpClientConnection conn, final IOException ex) {
-    shutdownConnection(conn);
-    System.out.println(conn + " [proxy->origin] I/O error: " + ex.getMessage());
-  }
-
-  public void timeout(final NHttpClientConnection conn) {
-    System.out.println(conn + " [proxy->origin] timeout");
-    closeConnection(conn);
-  }
-
-  private void shutdownConnection(final HttpConnection conn) {
+  private static void shutdownConnection(final HttpConnection conn) {
     try {
       conn.shutdown();
     } catch (IOException ignore) {
     }
   }
-
-  private void closeConnection(final HttpConnection conn) {
-    try {
-      conn.shutdown();
-    } catch (IOException ignore) {
-    }
-  }
-
 }

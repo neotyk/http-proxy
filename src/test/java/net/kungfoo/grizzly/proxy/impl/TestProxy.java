@@ -70,7 +70,7 @@ public class TestProxy {
   @Test
   public void testPOST201() throws IOException {
     String location = "uploader/upload";
-    URL url = new URL("http", "localhost", PORT, "/" + location);
+    URL url = new URL("http", "localhost", 8293, "/" + location);
     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection(PROXY);
     urlConnection.setRequestMethod("POST");
     urlConnection.setDoOutput(true);
