@@ -236,29 +236,40 @@ public class ConnectingHandler implements NHttpClientHandler {
         // TODO: propper handling of POST
         ByteBuffer src = proxyTask.getInBuffer();
         final int srcSize = src.limit();
+        if (src.position() != 0) {
+          System.out.println(conn + " [proxy->origin] buff not consumed yet");
+          return;
+        }
         ByteChunk chunk = new ByteChunk(srcSize);
         Request originalRequest = proxyTask.getOriginalRequest();
-        InputBuffer buffer = originalRequest.getInputBuffer();
-        int read = buffer.doRead(chunk, originalRequest);
-        if (read > srcSize) {
-          src = ByteBuffer.wrap(chunk.getBytes(), chunk.getOffset(), read);
-        } else {
-          src.put(chunk.getBytes(),chunk.getOffset(), read);
+        int read;
+        int encRead = 0;
+        long bytesWritten = 0;
+        while ((read = originalRequest.doRead(chunk)) != -1) {
+          System.out.println(conn + " [proxy->origin] " + read + " bytes read");
+          if (read > srcSize) {
+            src = ByteBuffer.wrap(chunk.getBytes(), chunk.getOffset(), read);
+          } else {
+            src.put(chunk.getBytes(),chunk.getOffset(), read);
+          }
+          src.flip();
+          encRead = encoder.write(src);
+          bytesWritten += encRead;
+          src.compact();
+          chunk.reset();
+          if (encRead == 0) {
+            System.out.println(conn + " [proxy->origin] encoder refused to consume more");
+            break;
+          } else {
+            System.out.println(conn + " [proxy->origin] " + encRead + " consumed by encoder");
+          }
         }
-        src.flip();
-        int bytesWritten = encoder.write(src);
         System.out.println(conn + " [proxy->origin] " + bytesWritten + " bytes written");
         System.out.println(conn + " [proxy->origin] " + encoder);
         src.compact();
 
-        if (src.position() == 0) {
-          if (proxyTask.getClientState() == ConnState.REQUEST_BODY_DONE) {
-            encoder.complete();
-          } else {
-            // Input buffer is empty. Wait until the client fills up
-            // the buffer
-            conn.suspendOutput();
-          }
+        if (src.position() == 0 &&encRead != 0) {
+          encoder.complete();
         }
         // Update connection state
         if (encoder.isCompleted()) {

@@ -67,7 +67,7 @@ public class TestProxy {
     Assert.assertEquals(urlConnection.getResponseCode(), 404, "Expecting 404 status code");
   }
 
-  @Test
+  @Test(timeOut = 500)
   public void testPOST201Small() throws IOException {
     String location = "uploader/upload";
     URL url = new URL("http", "localhost", PORT, "/" + location);
@@ -82,7 +82,7 @@ public class TestProxy {
     Assert.assertEquals(urlConnection.getResponseCode(), 201, "Expecting 201 status code");
   }
 
-  @Test
+  @Test(timeOut = 500)
   public void testPOST201Big() throws IOException {
     String location = "uploader/upload";
     URL url = new URL("http", "localhost", PORT, "/" + location);
@@ -122,7 +122,8 @@ public class TestProxy {
       protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(req.getInputStream()));
         String postData = reader.readLine();
-        System.out.println("got '" + postData + "'");
+        final int length = postData.length();
+        System.out.println("got " + (length > 16 ? "lenght: " + length : "'" +postData + "'"));
         if (UPLOAD_MSG.equals(postData)) {
           resp.setStatus(HttpServletResponse.SC_CREATED);
           resp.setHeader("Location", req.getRequestURI());
