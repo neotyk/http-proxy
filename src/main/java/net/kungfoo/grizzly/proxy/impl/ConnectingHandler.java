@@ -277,10 +277,6 @@ public class ConnectingHandler implements NHttpClientHandler {
           proxyTask.setOriginState(ConnState.REQUEST_BODY_DONE);
         } else {
           proxyTask.setOriginState(ConnState.REQUEST_BODY_STREAM);
-/*
-          // Make sure client input is active
-          proxyTask.getClientIOControl().requestInput();
-*/
         }
 
       } catch (IOException ex) {
